@@ -1,0 +1,67 @@
+---
+title: "data_exploration"
+format: html
+editor: visual
+---
+
+## Initial Data Exploration
+
+To start, we will do the following in a 'static' manner: - Produce numerical and graphical summaries to investigate the data. These should include: – One-way and Two-way contingency tables
+
+```         
+– Numerical summaries (means, medians, sds, etc.) for quantitative variables at levels of categorical variables
+– Create at least six plots.
+  - At least four of these should display multivariate information via the type of graph, by utilizing coloring, grouping, etc.
+  - All plots should have nice labels and titles.
+  - Some kind of faceting should be used somewhere.
+  - At least one plot should be a plot that we didn’t cover in class (say a heatmap or something like that (depends on your data)
+    lots of good examples to consider here https://exts.ggplot2.tidyverse.org/gallery/)
+```
+
+First, we will read in our data.
+
+```{r}
+#| warning: FALSE
+library(tidyverse)
+library(dplyr)
+library(readxl)
+```
+
+```{r}
+superstore_data <- read_excel("US_Superstore_data.xls", sheet = "Orders")
+head(superstore_data)
+```
+
+### Numerical Summaries
+
+Now, let's look at some numerical summaries to investigate our US Superstore data. First, let's investigate the different sections from where orders are placed. The variable we will use is called `Segment` and the orders can be placed from the following: `Consumer`, `Corporate`, or `Home Office`. By observing the one-way contingency table below, we can see that a majority of orders are placed from a consumer.
+
+```{r One-way contingency table}
+table(superstore_data$Segment)
+```
+
+Let's add in an extra factor to this piece of data. Across all sections from where orders are placed, we can see that items in the `Office Supplies` category are the most common order placed.
+
+```{r Two-way contingency table}
+table(superstore_data$Segment, superstore_data$Category)
+```
+
+Let's also find some other numerical summaries (means, medians, sds, etc.) for quantitative variables at levels of categorical variables. Below, we will see some summaries for `Sales` (the selling price of each product) and `Profit` (the profit gained on each product), as they relate to each order **category**. We can see that the `Technology` category has the highest priced products on average, as well as the highest amount of profit for products sold.
+
+```{r Numerical summaries}
+superstore_data |>
+  group_by(Category) |>
+  summarise(
+    mean_sales = mean(Sales, na.rm = TRUE),
+    median_sales = median(Sales, na.rm = TRUE),
+    sd_sales = sd(Sales, na.rm = TRUE),
+    
+    mean_profit = mean(Profit, na.rm = TRUE),
+    median_profit = median(Profit, na.rm = TRUE),
+    sd_profit = sd(Profit, na.rm = TRUE)
+  )
+```
+
+### Graphical Summaries
+
+Next, let's create some graphical summaries and plots to help visualize our data. We will cover multivariate information, facet by some categorical variable, and end with a unique plot!
