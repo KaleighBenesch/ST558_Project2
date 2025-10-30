@@ -24,6 +24,7 @@ First, we will read in our data.
 #| warning: FALSE
 library(tidyverse)
 library(dplyr)
+library(ggplot2)
 library(readxl)
 ```
 
@@ -64,4 +65,65 @@ superstore_data |>
 
 ### Graphical Summaries
 
-Next, let's create some graphical summaries and plots to help visualize our data. We will cover multivariate information, facet by some categorical variable, and end with a unique plot!
+Next, let's create some graphical summaries and plots to help visualize our data. We will cover multivariate information, facet by some categorical variable, and end with a unique plot! Below, we will us a bar plot to visualize the one-way contingency table we observed. This gives a graphical representation showing that consumers are the most common section from where orders are placed.
+```{r Segment barplot}
+ggplot(superstore_data, aes(x = Segment, fill = Segment)) +
+  geom_bar() +
+  labs(title = "Number of Orders by Segment",
+       x = "Customer Segment",
+       y = "Number of Orders")
+```
+
+Next, let's create a visual representation of our two-way contingency table. This plot will show multivariate information regarding `Segment` and `Category`. Since there are a different number of orders from each segment, this plot will help us better understand the proportion of orders from each category of item. Even though consumer orders heavily outweigh corporate and home office orders, we can see in the plot below that each segment has very similar proportions in regards to the category of order. Across all three segments, `Office Supplies` are still the most common type of order.
+```{r Segment and Category barplot}
+ggplot(superstore_data, aes(x = Segment, fill = Category)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Orders by Segment and Category",
+       x = "Customer Segment",
+       y = "Proportion of Orders",
+       fill = "Product Category")
+```
+
+Now that we are more familiar with the categories of orders placed, let's see how the selling price of these categories has changed between 2014-2018. by looking at the line plot below, we cannot see any significant trend in prices rising or falling over these years.
+```{r Sales and Date line plot}
+ggplot(superstore_data, aes(x = `Order Date`, y = Sales, color = Category)) +
+  geom_line(linewidth = 0.75) +
+  facet_wrap(~ Category) +
+  labs(title = "Sales Over Time by Order Category",
+       x = "Order Date",
+       y = "Sales (selling price)",
+       color = "Order Category")
+```
+
+
+Earlier, we found some numerical summaries relating to `Sales` and `Profit` by `Category`. Let's put a visual graph to that same information. Below, we have a scatter plot showing the selling price of products and the profit gained from them. These observations are colored by `Category`. One downside to this graph is that we have a few outliers in the `Technology` category. To include these data points, our plot needs to be "zoomed out" a little, which causes a higher density cluster of observations to form. These observations can be more difficult to read and interpret.
+```{r Sales and Profit}
+ggplot(superstore_data, aes(x = Sales, y = Profit, color = Category)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Sales vs. Profit by Product Category",
+       x = "Sales (selling price)",
+       y = "Profit")
+```
+
+Since our last scatter plot was a bit crowded, let's use `facet_wrap()` to break it down. We will look at observations, their selling price and amount of profit, separated into each `Category`. Below, we are able to see an interesting trend. Furniture orders have the least spread across amount of profit. Then, Office Supplies orders have a slightly wider margin for amount of profit. Finally, Technology orders have the most expensive selling prices, and also higher probabilities for greater profit gains/losses.
+```{r Sales and Profit faceted}
+ggplot(superstore_data, aes(x = Sales, y = Profit, color = Category)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~ Category) +
+  labs(title = "Sales vs. Profit across Categories",
+       x = "Sales (selling price)",
+       y = "Profit")
+```
+
+Let's end our graphical analysis with a new type of plot that has not yet been covered in the ST 558 class. The violin plot below gives us a different view of the distribution of profit gained/lost from each category. We see the same type of trend as above; Furniture has the least amount of profit margin and Technology has the highest amount of profit margin.
+```{r}
+ggplot(superstore_data, aes(x = Category, y = Profit, fill = Category)) +
+  geom_violin() +
+  coord_flip() +
+  labs(title = "Distribution of Profit by Product Category",
+       x = "Product Category",
+       y = "Profit") +
+  theme(legend.position = "none")
+```
+
+
