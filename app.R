@@ -7,9 +7,10 @@ rsconnect::deployApp('../ST558_Project2')
 superstore_data <- read_excel("US_Superstore_data.xls", sheet = "Orders")
 
 category_vars <- c("Segment", "Category", "Sub-Category", "Region")
-numeric_vars <- c("Sales", "Profit", "Quantity")
+numeric_vars <- c("Sales", "Profit", "Quantity", "Discount")
 
-
+################################################################################
+# UI
 # Define UI for the application
 ui <- fluidPage(
   
@@ -92,7 +93,19 @@ ui <- fluidPage(
 ################################################################################
 # DATA EXPLORATION TAB
         tabPanel("Data Exploration",
-                 h2("Obtain Numeric and Graphical Summaries")
+                 h2("Obtain Summaries and Visualizations"),
+                 
+                 # Choose to display categorical data summaries or numeric variable summaries.
+                 radioButtons("explore_type", "Choose type of exploration:",
+                              choices = c("Categorical" = "cat",
+                                          "Numeric" = "num")),
+                 uiOutput("explore_inputs"),
+                 
+                 # Use subtabs for either tables or plots
+                 tabsetPanel(
+                   tabPanel("Table", tableOutput("exploration_table")),
+                   tabPanel("Plot", plotOutput("exploration_plot"))
+                 )
         )
       )
     )
@@ -101,12 +114,13 @@ ui <- fluidPage(
 
 
 
-################################################################################
+######################################################################################################################################
+# SERVER LOGIC
 # Define server logic required to subset the data
 server <- function(input, output, session) {
 ################################################################################
 # This code makes sure the select boxes update so the user can't select the same variable in both.
-  # Update the first categorical selections available
+  # Update the CATEGORICAL selections available
   observeEvent(input$cat1, {
     updateSelectizeInput(session, "cat2",
                          choices = setdiff(category_vars, input$cat1),
@@ -117,6 +131,19 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "cat1",
                          choices = setdiff(category_vars, input$cat2),
                          selected = input$cat1)
+  })
+  
+  # Update the NUMERIC selections available
+  observeEvent(input$num1, {
+    updateSelectizeInput(session, "num2",
+                         choices = setdiff(numeric_vars, input$num1),
+                         selected = input$num2)
+  })
+  
+  observeEvent(input$num2, {
+    updateSelectizeInput(session, "num1",
+                         choices = setdiff(numeric_vars, input$num2),
+                         selected = input$num1)
   })
 ################################################################################
 # Logic for the two dynamic numeric sliders.
@@ -137,7 +164,8 @@ server <- function(input, output, session) {
                 value = c(min(superstore_data[[input$num2]], na.rm = TRUE),
                           max(superstore_data[[input$num2]], na.rm = TRUE)))
   })
-  
+
+################################################################################
 # Create reactiveValues() object on the server side to subset data appropriately.
   subsetted_data <- reactiveValues(
     data = NULL)
@@ -156,13 +184,13 @@ observeEvent(input$subset_data, {
     )
 })
   
-# Display the data table when the action button is pressed.
+# Display the data table when the action button is pressed in side panel.
   output$data_table <- DT::renderDataTable({
     req(subsetted_data$data)
     DT::datatable(subsetted_data$data, options = list(pageLength = 5))
   })
   
-# Handling the user's download.
+# Handling the user's download from DATA DOWNLOAD tab.
   output$download_data <- downloadHandler(
     filename = function() {
       paste0("superstore_subsetted.csv")
@@ -171,6 +199,23 @@ observeEvent(input$subset_data, {
       write.csv(subsetted_data$data, file, row.names = FALSE)
     }
   )
+  
+# Variable selection based on numerical or graphical summary type in DATA EXPLORATION tab.
+  output$explore_inputs <- renderUI({
+    req(subsetted_data$data) # Check if subsetted data exists.
+    
+    if (input$explore_type == "cat") {
+      selectInput("cat_var", "Select categorical variable:",
+                  choices = category_vars)
+    } else {
+      tagList(
+        selectInput("num_var", "Select numeric variable:",
+                    choices = numeric_vars),
+        selectInput("cat_var", "Optional categorical variable:",
+                    choices = c(None = ".", category_vars))
+      )
+    }
+  })
 }
 
 ################################################################################
