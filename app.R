@@ -52,7 +52,49 @@ ui <- fluidPage(
 ################################################################################
       # MAIN PANEL CODE GOES HERE
     mainPanel(
-      h3("MAIN PANEL CODE GOES HERE LATER")
+      tabsetPanel(
+        id = "tabs",
+################################################################################
+# ABOUT TAB
+        tabPanel("About",
+                 h2("About the App"),
+                 p("Welcome to the Data Exploration App!"),
+                 p("This Shiny app allows you to explore sales, profits, and other variables in a real U.S. Superstore dataset. 
+                   Use the sidebar to subset the data based on consumer and product details, then explore the data across various settings."),
+
+                # The data and it's source.
+                 h3("About the Data"),
+                 p("This dataset gives insights on online orders of a superstore in the U.S. 
+                   It includes consumer orders from 2014–2018, with details about sales, profit, category, etc."),
+                 p(HTML("For further information on the dataset, see here: 
+                   <a href='https://www.kaggle.com/datasets/vivek468/superstore-dataset-final' target='_blank'>
+                   US Superstore data on Kaggle</a>")),
+                  # Image related to the dataset.
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Superstore_%28Universal_Television_sitcom%29.svg/2560px-Superstore_%28Universal_Television_sitcom%29.svg.png", 
+                     height = "80px"),
+
+                 h3("Using the App"),
+                 tags$ul(
+                   tags$li("Use the sidebar to subset the dataset."),
+                   tags$li("Go to the 'Data Download' tab to see or download your subsetted data."),
+                   tags$li("Explore the data for summaries and visualizations.")
+                 )
+        ),
+################################################################################
+# DATA DOWNLOAD TAB
+        tabPanel("Data Download",
+                 h2("See and Download Your Subsetted Data"),
+                 p("After choosing your subsets in the sidebar, click 'Subset the Data' button to update this table."),
+                 DT::dataTableOutput("data_table"),
+                # Save the user's data as a file.
+                 downloadButton("download_data", "Download Your Data")
+        ),
+################################################################################
+# DATA EXPLORATION TAB
+        tabPanel("Data Exploration",
+                 h2("Obtain Numeric and Graphical Summaries")
+        )
+      )
     )
   )
 )
@@ -77,7 +119,7 @@ server <- function(input, output, session) {
                          selected = input$cat1)
   })
 ################################################################################
-# Logic for dynamic numeric sliders
+# Logic for the two dynamic numeric sliders.
   output$num1_slider <- renderUI({
     sliderInput("num1_range",
                 label = paste("Select range for", input$num1, ":"),
@@ -96,12 +138,9 @@ server <- function(input, output, session) {
                           max(superstore_data[[input$num2]], na.rm = TRUE)))
   })
   
-  
-  
-  # Create reactiveValues() object on the server side to subset data appropriately.
+# Create reactiveValues() object on the server side to subset data appropriately.
   subsetted_data <- reactiveValues(
     data = NULL)
-}
 
 ################################################################################
 # Now subset the data when the action button is pressed.
@@ -116,8 +155,24 @@ observeEvent(input$subset_data, {
       .data[[input$num2]] <= input$num2_range[2]
     )
 })
+  
+# Display the data table when the action button is pressed.
+  output$data_table <- DT::renderDataTable({
+    req(subsetted_data$data)
+    DT::datatable(subsetted_data$data, options = list(pageLength = 5))
+  })
+  
+# Handling the user's download.
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste0("superstore_subsetted.csv")
+    },
+    content = function(file) {
+      write.csv(subsetted_data$data, file, row.names = FALSE)
+    }
+  )
+}
 
-
-
+################################################################################
 # Run the application 
 shinyApp(ui = ui, server = server)
