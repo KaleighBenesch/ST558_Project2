@@ -217,6 +217,8 @@ observeEvent(input$subset_data, {
       tagList(
         selectInput("num_var", "Select numeric variable:",
                     choices = numeric_vars),
+        selectInput("num_var2", "Optional 2nd numeric variable (plot tab only):",
+                    choices = c(None = ".", numeric_vars)),
         selectInput("cat_var", "Optional categorical variable:",
                     choices = c(None = ".", category_vars))
       )
@@ -280,34 +282,73 @@ observeEvent(input$subset_data, {
     withProgress(message = "Rendering plot...", value = 0, {
       
 # CATEGORICAL PLOTS
-      # Only one categorical variable selected, show basic bar plot.
       if (input$explore_type == "cat") {
         req(input$cat_var)
+        
+        # If only one categorical variable selected, show basic bar plot.
+        if (input$cat_var2 %in% c(".", "None")) {
         ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"), # Back ticks fix error with "Sub-Category" hyphen in name.
                                                fill = paste0("`", input$cat_var, "`"))) +
           geom_bar() +
           labs(title = paste("Number of Orders by", input$cat_var),
                x = input$cat_var,
                y = "Number of Orders")
+          
+        } else { # A second optional categorical variable is selected.
+          ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"),
+                                                 fill = paste0("`", input$cat_var2, "`"))) +
+            geom_bar(position = "dodge") + # Stacked could get too confusing if the user chooses a categorical variable with more than 3 fields.
+            labs(title = paste("Number of Orders by", input$cat_var, "and", input$cat_var2),
+                 x = input$cat_var,
+                 y = "Number of Orders",
+                 fill = input$cat_var2)}
         
 # NUMERIC PLOTS
       } else {
         req(input$num_var)
+        
         # Scatter plot if only one numeric variable is selected.
-        if (is.null(input$cat_var) || input$cat_var == ".") {
-          ggplot(subsetted_data$data, aes_string(x = input$num_var)) +
-            geom_histogram(fill = "darkcyan", color = "black", bins = 40) +
-            labs(title = paste("Distribution of", input$num_var),
-                 x = input$num_var, y = "Count")
-        } else { # Create a box plot if both numeric and categorical variables are selected.
+        if (is.null(input$num_var2) || input$num_var2 %in% c(".", "None")) {
+          if (is.null(input$cat_var) || input$cat_var %in% c(".", "None")) {
+            # Plot visual
+            ggplot(subsetted_data$data, aes_string(x = input$num_var)) +
+              geom_histogram(fill = "darkcyan", color = "black", bins = 40) +
+              labs(title = paste("Distribution of", input$num_var),
+                   x = input$num_var, 
+                   y = "Count")
+            
+        } else { # Create a box plot if one numeric and one categorical variables are selected.
           ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"), # Back ticks fix error with "Sub-Category" hyphen in name.
                                                  y = paste0("`", input$num_var, "`"), 
                                                  fill = paste0("`", input$cat_var, "`"))) +
             geom_boxplot() +
             coord_flip() +
             labs(title = paste(input$num_var, "by", input$cat_var),
-                 x = input$cat_var, y = input$num_var) +
+                 x = input$cat_var, 
+                 y = input$num_var) +
             theme(legend.position = "none")
+        }
+          
+      } else { # Two numeric variables are selected, no categorical variables are selected.
+        if (is.null(input$cat_var) || input$cat_var %in% c(".", "None")) {
+          # Plot visual
+          ggplot(subsetted_data$data, aes_string(x = input$num_var, 
+                                                 y = input$num_var2)) +
+            geom_point(color = "darkcyan", alpha = 0.5) +
+            labs(title = paste(input$num_var, "vs", input$num_var2),
+                 x = input$num_var, 
+                 y = input$num_var2)
+        } else {
+          # Plot visual faceted by one categorical variable.
+          ggplot(subsetted_data$data, aes_string(
+            x = input$num_var,
+            y = input$num_var2)) +
+            geom_point(alpha = 0.5, color = "darkcyan") +
+            facet_wrap(as.formula(paste("~", paste0("`", input$cat_var, "`")))) +
+            labs(title = paste(input$num_var, "vs", input$num_var2, "by", input$cat_var),
+                 x = input$num_var, 
+                 y = input$num_var2)
+          }
         }
       }
     })
