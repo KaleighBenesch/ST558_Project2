@@ -207,8 +207,12 @@ observeEvent(input$subset_data, {
     req(subsetted_data$data) # Check if subsetted data exists.
     
     if (input$explore_type == "cat") {
-      selectInput("cat_var", "Select categorical variable:",
-                  choices = category_vars)
+      tagList(
+        selectInput("cat_var", "Select categorical variable:",
+                    choices = category_vars),
+        selectInput("cat_var2", "Optional 2nd categorical variable:",
+                    choices = c(None = ".", category_vars))
+      )
     } else {
       tagList(
         selectInput("num_var", "Select numeric variable:",
@@ -224,10 +228,29 @@ observeEvent(input$subset_data, {
   output$exploration_table <- renderTable({
     req(subsetted_data$data)
     
+# CATEGORICAL TABLES
     if (input$explore_type == "cat") {
       req(input$cat_var)
-      tbl <- table(subsetted_data$data[[input$cat_var]])
-      return(as.data.frame(tbl))
+      
+      # If the optional second variable is selected to NONE, show a one-way contingency table.
+      if (input$cat_var2 %in% c(".", "None")) {
+        tbl <- table(subsetted_data$data[[input$cat_var]])
+        df <- data.frame(Category = names(tbl), Frequency = as.vector(tbl))
+        return(df)
+        
+      } else {
+        # Otherwise, show the two-way contingency table with both categorical variables.
+        subsetted_data$data %>%
+          count(.data[[input$cat_var]], .data[[input$cat_var2]]) %>%
+          pivot_wider(
+            names_from = input$cat_var2,
+            values_from = n,
+            values_fill = 0
+          ) 
+      }
+      
+# NUMERIC SUMMARY TABLES
+    # Show numeric summary table for only one numeric variable selected.
     } else if (input$explore_type == "num") {
       req(input$num_var)
       if (is.null(input$cat_var) || input$cat_var == ".") {
@@ -237,7 +260,7 @@ observeEvent(input$subset_data, {
             median = median(.data[[input$num_var]], na.rm = TRUE),
             sd = sd(.data[[input$num_var]], na.rm = TRUE)
           )
-      } else {
+      } else { # Show numeric summary table with categorical grouping, if selected.
         subsetted_data$data |>
           group_by(.data[[input$cat_var]]) |>
           summarise(
@@ -248,7 +271,6 @@ observeEvent(input$subset_data, {
       }
     }
   })
-  
 ################################################################################
 # Exploration plots (categorical and numeric).
   
@@ -256,7 +278,9 @@ observeEvent(input$subset_data, {
     req(subsetted_data$data)
 # Add a loading message while rendering the plot.
     withProgress(message = "Rendering plot...", value = 0, {
-      # Only categorical variable selected, show basic bar plot.
+      
+# CATEGORICAL PLOTS
+      # Only one categorical variable selected, show basic bar plot.
       if (input$explore_type == "cat") {
         req(input$cat_var)
         ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"), # Back ticks fix error with "Sub-Category" hyphen in name.
@@ -265,10 +289,11 @@ observeEvent(input$subset_data, {
           labs(title = paste("Number of Orders by", input$cat_var),
                x = input$cat_var,
                y = "Number of Orders")
-      # Numeric plots
+        
+# NUMERIC PLOTS
       } else {
         req(input$num_var)
-        # Scatter plot if only numeric variable is selected.
+        # Scatter plot if only one numeric variable is selected.
         if (is.null(input$cat_var) || input$cat_var == ".") {
           ggplot(subsetted_data$data, aes_string(x = input$num_var)) +
             geom_histogram(fill = "darkcyan", color = "black", bins = 40) +
