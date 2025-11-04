@@ -190,6 +190,7 @@ observeEvent(input$subset_data, {
     DT::datatable(subsetted_data$data, options = list(pageLength = 5))
   })
   
+################################################################################
 # Handling the user's download from DATA DOWNLOAD tab.
   output$download_data <- downloadHandler(
     filename = function() {
@@ -200,6 +201,7 @@ observeEvent(input$subset_data, {
     }
   )
   
+################################################################################
 # Variable selection based on numerical or graphical summary type in DATA EXPLORATION tab.
   output$explore_inputs <- renderUI({
     req(subsetted_data$data) # Check if subsetted data exists.
@@ -216,8 +218,40 @@ observeEvent(input$subset_data, {
       )
     }
   })
+  
+################################################################################
+# Categorical contingency table.
+  output$exploration_table <- renderTable({
+    req(subsetted_data$data)
+    validate(
+      need(input$explore_type == "cat", "Select 'Categorical' to see this table.")
+    )
+    req(input$cat_var)
+    
+    table(subsetted_data$data[[input$cat_var]])
+  }, rownames = TRUE)
+  
+# Categorical Bar Plot
+  output$exploration_plot <- renderPlot({
+    req(subsetted_data$data)
+    validate(
+      need(input$explore_type == "cat", "Select 'Categorical' to see this plot."),
+      need(input$cat_var, "Select a categorical variable to plot.")
+    )
+    
+# Add a loading message while rendering the plot.
+    withProgress(message = "Rendering plot...", value = 0, {
+# Plot visual
+    ggplot(subsetted_data$data, aes_string(x = input$cat_var, fill = input$cat_var)) +
+      geom_bar() +
+      labs(title = paste("Number of Orders by", input$cat_var),
+           x = input$cat_var,
+           y = "Number of Orders")
+  })
+})
 }
 
 ################################################################################
 # Run the application 
 shinyApp(ui = ui, server = server)
+  
