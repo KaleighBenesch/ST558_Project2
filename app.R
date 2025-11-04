@@ -1,8 +1,8 @@
 library(shiny)
 library(shinyalert)
 library(tidyverse)
+library(readxl)
 library(rsconnect)
-rsconnect::deployApp('../ST558_Project2')
 
 superstore_data <- read_excel("US_Superstore_data.xls", sheet = "Orders")
 
