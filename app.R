@@ -220,35 +220,73 @@ observeEvent(input$subset_data, {
   })
   
 ################################################################################
-# Categorical contingency table.
+# Exploration tables and summaries (categorical and numeric).
   output$exploration_table <- renderTable({
     req(subsetted_data$data)
-    validate(
-      need(input$explore_type == "cat", "Select 'Categorical' to see this table.")
-    )
-    req(input$cat_var)
     
-    table(subsetted_data$data[[input$cat_var]])
-  }, rownames = TRUE)
+    if (input$explore_type == "cat") {
+      req(input$cat_var)
+      tbl <- table(subsetted_data$data[[input$cat_var]])
+      return(as.data.frame(tbl))
+    } else if (input$explore_type == "num") {
+      req(input$num_var)
+      if (is.null(input$cat_var) || input$cat_var == ".") {
+        subsetted_data$data |>
+          summarise(
+            mean = mean(.data[[input$num_var]], na.rm = TRUE),
+            median = median(.data[[input$num_var]], na.rm = TRUE),
+            sd = sd(.data[[input$num_var]], na.rm = TRUE)
+          )
+      } else {
+        subsetted_data$data |>
+          group_by(.data[[input$cat_var]]) |>
+          summarise(
+            mean = mean(.data[[input$num_var]], na.rm = TRUE),
+            median = median(.data[[input$num_var]], na.rm = TRUE),
+            sd = sd(.data[[input$num_var]], na.rm = TRUE)
+          )
+      }
+    }
+  })
   
-# Categorical Bar Plot
+################################################################################
+# Exploration plots (categorical and numeric).
+  
   output$exploration_plot <- renderPlot({
     req(subsetted_data$data)
-    validate(
-      need(input$explore_type == "cat", "Select 'Categorical' to see this plot."),
-      need(input$cat_var, "Select a categorical variable to plot.")
-    )
-    
 # Add a loading message while rendering the plot.
     withProgress(message = "Rendering plot...", value = 0, {
-# Plot visual
-    ggplot(subsetted_data$data, aes_string(x = input$cat_var, fill = input$cat_var)) +
-      geom_bar() +
-      labs(title = paste("Number of Orders by", input$cat_var),
-           x = input$cat_var,
-           y = "Number of Orders")
+      # Only categorical variable selected, show basic bar plot.
+      if (input$explore_type == "cat") {
+        req(input$cat_var)
+        ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"), # Back ticks fix error with "Sub-Category" hyphen in name.
+                                               fill = paste0("`", input$cat_var, "`"))) +
+          geom_bar() +
+          labs(title = paste("Number of Orders by", input$cat_var),
+               x = input$cat_var,
+               y = "Number of Orders")
+      # Numeric plots
+      } else {
+        req(input$num_var)
+        # Scatter plot if only numeric variable is selected.
+        if (is.null(input$cat_var) || input$cat_var == ".") {
+          ggplot(subsetted_data$data, aes_string(x = input$num_var)) +
+            geom_histogram(fill = "darkcyan", color = "black", bins = 40) +
+            labs(title = paste("Distribution of", input$num_var),
+                 x = input$num_var, y = "Count")
+        } else { # Create a box plot if both numeric and categorical variables are selected.
+          ggplot(subsetted_data$data, aes_string(x = paste0("`", input$cat_var, "`"), # Back ticks fix error with "Sub-Category" hyphen in name.
+                                                 y = paste0("`", input$num_var, "`"), 
+                                                 fill = paste0("`", input$cat_var, "`"))) +
+            geom_boxplot() +
+            coord_flip() +
+            labs(title = paste(input$num_var, "by", input$cat_var),
+                 x = input$cat_var, y = input$num_var) +
+            theme(legend.position = "none")
+        }
+      }
+    })
   })
-})
 }
 
 ################################################################################
